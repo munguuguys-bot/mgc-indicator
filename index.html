@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101d31">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MGC Indicator">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>MGC Indicator</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1423;--panel:#142238;--panel2:#1b2d47;--text:#edf3fb;--muted:#9eafc5;--accent:#65b5ff;--line:#2b405e}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#101d31,#0b1423 260px);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:env(safe-area-inset-top) 16px calc(24px + env(safe-area-inset-bottom));max-width:760px;margin-inline:auto}
+header{padding:22px 4px 16px}header h1{font-size:26px;margin:0 0 6px}header p{margin:0;color:var(--muted);font-size:14px;line-height:1.45}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 8px 22px #0002}
+h2{font-size:17px;margin:0 0 12px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button,.file-label{background:var(--accent);color:#06172a;border:0;border-radius:12px;padding:13px 16px;font-weight:700;font-size:15px;display:inline-flex;justify-content:center;align-items:center;gap:8px}
+button.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+input[type=file]{display:none}.hint,.muted{color:var(--muted);font-size:12px;line-height:1.5}
+.status{font-size:13px;color:var(--muted);margin-top:10px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.metric{background:var(--panel2);padding:14px;border-radius:13px;min-width:0}
+.metric span{font-size:12px;color:var(--muted)}.metric strong{display:block;font-size:21px;margin-top:6px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+#explain{font-size:14px;line-height:1.6;color:#dce8f6}
+.notice{border-left:3px solid var(--accent);padding:10px 12px;background:#172b43;border-radius:8px;font-size:12px;line-height:1.5;color:#c4d4e8}
+footer{text-align:center;color:var(--muted);font-size:11px;line-height:1.5;padding:14px 4px}
+@media(min-width:600px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<header>
+ <h1>MGC Indicator</h1>
+ <p>Сургалтын индикаторын самбар · CSV өгөгдөл дээр офлайн тооцоолол</p>
+</header>
+<section class="card">
+ <h2>Өгөгдөл оруулах</h2>
+ <div class="row">
+  <label class="file-label" for="file">＋ CSV файл сонгох</label>
+  <button class="secondary" id="demo">Жишээ үзэх</button>
+ </div>
+ <input id="file" type="file" accept=".csv,text/csv">
+ <div class="hint" style="margin-top:12px">CSV багана: close заавал; high, low, volume байвал VWAP тооцно. Доод тал нь 25 мөр.</div>
+ <div id="status" class="status">Файл сонгоогүй байна.</div>
+</section>
+<section class="card">
+ <h2>Индикаторын утгууд</h2>
+ <div class="grid">
+  <div class="metric"><span>Хаалтын үнэ</span><strong id="close">—</strong></div>
+  <div class="metric"><span>EMA 9</span><strong id="ema9">—</strong></div>
+  <div class="metric"><span>EMA 21</span><strong id="ema21">—</strong></div>
+  <div class="metric"><span>RSI 14</span><strong id="rsi">—</strong></div>
+  <div class="metric"><span>MACD</span><strong id="macd">—</strong></div>
+  <div class="metric"><span>VWAP</span><strong id="vwap">—</strong></div>
+ </div>
+</section>
+<section class="card">
+ <h2>Тайлбар</h2>
+ <p id="explain">Өгөгдөл оруулсны дараа индикаторуудын тайлбар гарна.</p>
+ <div class="notice">Эдгээр үзүүлэлт нь өнгөрсөн үнийн өгөгдлийг тооцдог. Ирээдүйн үнийг батлахгүй бөгөөд BUY/SELL арилжааны сигнал биш.</div>
+</section>
+<section class="card">
+ <h2>iPhone-д нэмэх</h2>
+ <p class="hint">Веб аппыг HTTPS хаяг дээр байршуулсны дараа Safari-аар нээгээд Share → Add to Home Screen сонгоно. Эхлээд энэ багц файлыг веб хостингт байрлуулах шаардлагатай.</p>
+</section>
+<footer>Сургалтын зориулалттай. Захиалга илгээхгүй, TopstepX-тэй холбогдохгүй. Таны CSV өгөгдөл энэ хуудсанд локалаар боловсруулагдана.</footer>
+<script>
+const $=id=>document.getElementById(id);
+function parseCSV(s){
+ const lines=s.trim().split(/\r?\n/);if(lines.length<2)throw Error("CSV хоосон байна.");
+ const h=lines[0].split(",").map(x=>x.trim().toLowerCase().replace(/^"|"$/g,""));
+ const ix=n=>h.indexOf(n),ci=ix("close");if(ci<0)throw Error("close багана олдсонгүй.");
+ const num=(r,i)=>i>=0&&i<r.length?Number(r[i]):NaN;
+ const out=lines.slice(1).map(l=>l.split(",").map(x=>x.trim().replace(/^"|"$/g,""))).map(r=>({close:num(r,ci),high:num(r,ix("high")),low:num(r,ix("low")),volume:num(r,ix("volume"))})).filter(x=>Number.isFinite(x.close));
+ if(out.length<25)throw Error("25-аас доошгүй хүчинтэй мөр шаардлагатай.");return out;
+}
+function ema(a,p){let k=2/(p+1),v=a[0],o=[];a.forEach((x,i)=>{v=i?x*k+v*(1-k):x;o.push(v)});return o}
+function rsi(a,p=14){let g=0,l=0;for(let i=1;i<=p;i++){let d=a[i]-a[i-1];g+=Math.max(d,0);l+=Math.max(-d,0)}g/=p;l/=p;for(let i=p+1;i<a.length;i++){let d=a[i]-a[i-1];g=(g*(p-1)+Math.max(d,0))/p;l=(l*(p-1)+Math.max(-d,0))/p}return l===0?100:100-100/(1+g/l)}
+function calculate(d){
+ let c=d.map(x=>x.close),a=ema(c,9).at(-1),b=ema(c,21).at(-1),m=ema(c,12).at(-1)-ema(c,26).at(-1),r=rsi(c);
+ let v=null,vol=d.reduce((s,x)=>s+(Number.isFinite(x.volume)?x.volume:0),0);
+ if(vol>0&&d.every(x=>Number.isFinite(x.high)&&Number.isFinite(x.low)&&Number.isFinite(x.volume)))v=d.reduce((s,x)=>s+((x.high+x.low+x.close)/3)*x.volume,0)/vol;
+ return {c:c.at(-1),a,b,m,r,v};
+}
+function render(d,label){let x=calculate(d),f=n=>Number.isFinite(n)?n.toFixed(2):"—";
+ $("close").textContent=f(x.c);$("ema9").textContent=f(x.a);$("ema21").textContent=f(x.b);$("rsi").textContent=f(x.r);$("macd").textContent=f(x.m);$("vwap").textContent=x.v===null?"—":f(x.v);
+ let t=[x.a>x.b?"EMA 9 нь EMA 21-ээс өндөр байна.":"EMA 9 нь EMA 21-ээс доогуур байна.",x.r>=70?"RSI өндөр бүсэд байна.":x.r<=30?"RSI доод бүсэд байна.":"RSI дунд бүсэд байна.",x.m>=0?"MACD эерэг байна.":"MACD сөрөг байна."];
+ if(x.v!==null)t.push(x.c>x.v?"Хаалтын үнэ VWAP-аас дээгүүр байна.":"Хаалтын үнэ VWAP-аас доогуур байна.");
+ $("explain").textContent=t.join(" ")+" Эдгээр нь дангаараа шийдвэр гаргах үндэслэл биш.";
+ $("status").textContent=label+" · "+d.length+" мөр уншлаа.";
+}
+$("file").addEventListener("change",async e=>{try{let f=e.target.files[0];if(f)render(parseCSV(await f.text()),f.name)}catch(err){$("status").textContent="Алдаа: "+err.message}});
+$("demo").addEventListener("click",()=>{let d=[];for(let i=0;i<80;i++){let c=2000+i*.18+Math.sin(i/4)*2;d.push({close:c,high:c+1,low:c-1,volume:100+i*2})}render(d,"Хиймэл жишээ өгөгдөл")});
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){navigator.serviceWorker.register("./sw.js").catch(()=>{});}
+</script>
+</body></html>
